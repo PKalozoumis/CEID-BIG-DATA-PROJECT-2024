@@ -15,7 +15,7 @@ if __name__ == "__main__":
     start = datetime.now()
 
     for t in range(5, 3605, 5):
-        data = df.loc[(df["t"] == t) & (df["link"] != "waiting_at_origin_node")]
+        data = df.loc[(df["t"] == t) & (df["link"] != "waiting_at_origin_node") & (df["link"] != "trip_end")]
 
         for _, value in data.iterrows():
             json_data = {
