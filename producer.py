@@ -15,6 +15,9 @@ if __name__ == "__main__":
     start = datetime.now()
 
     for t in range(5, 3605, 5):
+        #Exclude waiting_at_origin_node because nothing is happening those time moments
+        #Exclude trip_end because we already have link data for the same car and timestamp,
+        #we don't care if that link was its destination
         data = df.loc[(df["t"] == t) & (df["link"] != "waiting_at_origin_node") & (df["link"] != "trip_end")]
 
         for _, value in data.iterrows():
@@ -32,3 +35,6 @@ if __name__ == "__main__":
             producer.send("vehicle_positions", json.dumps(json_data).encode("utf-8"))
 
             #print(json.dumps(json_data))
+
+    producer.flush()
+    producer.close()
