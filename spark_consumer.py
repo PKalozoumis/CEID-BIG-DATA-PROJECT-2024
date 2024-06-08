@@ -1,8 +1,9 @@
-#$SPARK_HOME/bin/spark-submit --packages org.apache.spark:spark-streaming-kafka-0-10_2.12:3.5.1,org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.1 spark_consumer.py
-
 from pyspark.sql import DataFrame, SparkSession
 from pyspark.sql.functions import col, from_json, count, avg, to_json, struct, expr
-from pyspark.sql.types import StructType, StructField, StringType, FloatType
+from pyspark.sql.types import StructType, StructField, StringType, FloatType, TimestampType
+from pyspark.sql.functions import window
+
+import sys
 
 
 spark = SparkSession.builder.appName("Traffic Data").getOrCreate()
@@ -20,7 +21,7 @@ schema = StructType([
     StructField("name", StringType()),
     StructField("origin", StringType()),
     StructField("destination", StringType()),
-    StructField("time", StringType()),
+    StructField("time", TimestampType()),
     StructField("link", StringType()),
     StructField("position", FloatType()),
     StructField("spacing", FloatType()),
@@ -32,24 +33,33 @@ schema = StructType([
 df = df.select(from_json(col("value").cast("string"), schema).alias("data"))
 df = df.select("data.time", "data.link", "data.name", "data.speed")
 
-#Perform all the requires calculations
-
+#Perform all the required calculations
 df = df.groupby("time", "link").agg(
     count("name").alias("vcount"),
     avg("speed").alias("vspeed"),
 )
 
 #Turn back into a json string
-
-#HOW THE FUCK DO I DO THIS????????????????
+json_df = df.select(to_json(struct("*")).alias("value")).selectExpr("CAST(value AS STRING)")
 
 #Sink dataframe into another kafka topic 
-query = df.writeStream\
+query = json_df.writeStream\
 .outputMode("update")\
+.trigger(processingTime="100 milliseconds")\
 .format("kafka")\
 .option("kafka.bootstrap.servers", "localhost:9092")\
-.option("checkpointLocation", "../../kafka_checkpoints")\
+.option("checkpointLocation", "../../spark_checkpoints")\
 .option("topic", "spark_output")\
 .start()
+
+'''
+query = df.writeStream\
+.format("json")\
+.option("path", "./spark.json")\
+.option("checkpointLocation", "../../kafka_checkpoints")\
+.start()
+
+query.awaitTermination()
+'''
 
 query.awaitTermination()
