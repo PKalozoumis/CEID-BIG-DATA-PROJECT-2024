@@ -5,9 +5,28 @@ from pyspark.sql.functions import window
 
 import sys
 
+#==============================================================================================
+
+def mdb_write(batch, batch_id):
+    batch.write\
+        .format("mongodb")\
+        .mode("append").option("database", "big_data_project_2024")\
+        .option("collection", "raw")\
+        .save()
+    
+def mdb_processed_write(batch, batch_id):
+    batch.write\
+        .format("mongodb")\
+        .mode("append").option("database", "big_data_project_2024")\
+        .option("collection", "processed")\
+        .save()
+    
+#==============================================================================================
 
 spark = SparkSession.builder.appName("Traffic Data").getOrCreate()
 
+#Read froom kafka stream
+#==============================================================================================
 df = spark.readStream\
 .format("kafka")\
 .option("kafka.bootstrap.servers", "localhost:9092")\
@@ -17,6 +36,7 @@ df = spark.readStream\
 assert isinstance(df, DataFrame)
 
 #Define schema for the json column
+#==============================================================================================
 schema = StructType([
     StructField("name", StringType()),
     StructField("origin", StringType()),
@@ -30,36 +50,26 @@ schema = StructType([
 
 #df is a kafka message, with a binary "value" field
 #We need to cast it into json string
+#==============================================================================================
 df = df.select(from_json(col("value").cast("string"), schema).alias("data"))
 df = df.select("data.time", "data.link", "data.name", "data.speed")
 
+#Write raw data to mongo
+#==============================================================================================
+mdb_raw_query = df.writeStream.outputMode("append").foreachBatch(mdb_write).start()
+
 #Perform all the required calculations
-df = df.groupby("time", "link").agg(
+#==============================================================================================
+df = df.withWatermark("time", "1 milliseconds").groupby(window("time", "1 seconds"), "link").agg(
     count("name").alias("vcount"),
     avg("speed").alias("vspeed"),
 )
 
-#Turn back into a json string
-json_df = df.select(to_json(struct("*")).alias("value")).selectExpr("CAST(value AS STRING)")
+df = df.select(col("window.start").alias("time"), col("link"), col("vcount"), col("vspeed"))
 
-#Sink dataframe into another kafka topic 
-query = json_df.writeStream\
-.outputMode("update")\
-.trigger(processingTime="100 milliseconds")\
-.format("kafka")\
-.option("kafka.bootstrap.servers", "localhost:9092")\
-.option("checkpointLocation", "../../spark_checkpoints")\
-.option("topic", "spark_output")\
-.start()
+#Write processed data to mongodb
+#==============================================================================================
+mdb_processed_query = df.writeStream.outputMode("append").foreachBatch(mdb_processed_write).start()
 
-'''
-query = df.writeStream\
-.format("json")\
-.option("path", "./spark.json")\
-.option("checkpointLocation", "../../kafka_checkpoints")\
-.start()
-
-query.awaitTermination()
-'''
-
-query.awaitTermination()
+mdb_raw_query.awaitTermination()
+mdb_processed_query.awaitTermination()
