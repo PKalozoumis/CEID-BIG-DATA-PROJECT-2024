@@ -28,23 +28,23 @@ while (opt == None):
         print("\033[8A", end='')
         print("\033[J", end='')
 
+print("\nMake sure to insert UTC time in the format YYYY-MM-DD HH:MM:SS\n")
+
+#Query parameters
+#================================================================================
+lower_str = input("Lower date: ")
+#lower_time = datetime.strptime(lower_str, '%Y-%m-%d %H:%M:%S')
+lower_time = datetime.strptime("2024-06-21 17:01:29", '%Y-%m-%d %H:%M:%S')
+
+upper_str = input("Upper time: ")
+#upper_time = datetime.strptime(upper_str, '%Y-%m-%d %H:%M:%S')
+upper_time = datetime.strptime("2024-06-21 17:01:44", '%Y-%m-%d %H:%M:%S')
+
 print()
 
 #=======================================================================================================================================
 
 if (opt == "1"):
-
-    print("Make sure to insert UTC time in the format YYYY-MM-DD HH:MM:SS\n")
-
-    #Query parameters
-    #================================================================================
-    lower_str = input("Lower date: ")
-    lower_time = datetime.strptime(lower_str, '%Y-%m-%d %H:%M:%S')
-
-    upper_str = input("Upper time: ")
-    upper_time = datetime.strptime(upper_str, '%Y-%m-%d %H:%M:%S')
-    #================================================================================
-
 
     '''
     query = [
@@ -82,3 +82,10 @@ if (opt == "1"):
         print(f"Link {doc['link']} with {doc['vcount']} cars at {doc['time']}")
 
 #=======================================================================================================================================
+
+
+elif (opt == 2):
+    pass
+
+elif (opt == 3):
+    pass

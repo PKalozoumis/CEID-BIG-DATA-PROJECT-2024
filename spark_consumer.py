@@ -54,7 +54,7 @@ schema = StructType([
 #We need to cast it into json string
 #==============================================================================================
 df = df.select(from_json(col("value").cast("string"), schema).alias("data"))
-df = df.select("data.time", "data.link", "data.name", "data.speed")
+df = df.select("data.*")
 
 #Write raw data to mongo
 #==============================================================================================
@@ -62,6 +62,8 @@ mdb_raw_query = df.writeStream.outputMode("append").foreachBatch(mdb_write).star
 
 #Perform all the required calculations
 #==============================================================================================
+df = df.select("time", "link", "name", "speed")
+
 df = df.withWatermark("time", "1 milliseconds").groupby(window("time", "1 seconds"), "link").agg(
     count("name").alias("vcount"),
     avg("speed").alias("vspeed"),
