@@ -7,6 +7,7 @@ import sys
 
 #==============================================================================================
 
+#
 def mdb_write(batch, batch_id):
     batch.write\
         .format("mongodb")\
@@ -25,7 +26,7 @@ def mdb_processed_write(batch, batch_id):
 
 spark = SparkSession.builder.appName("Traffic Data").getOrCreate()
 
-#Read froom kafka stream
+#Read from kafka stream
 #==============================================================================================
 df = spark.readStream\
 .format("kafka")\
@@ -33,6 +34,7 @@ df = spark.readStream\
 .option("subscribe", "vehicle_positions")\
 .load()
 
+#Force-enable Intellisense
 assert isinstance(df, DataFrame)
 
 #Define schema for the json column
