@@ -1,5 +1,8 @@
 from pymongo import MongoClient
 from datetime import datetime, timezone
+import pytz
+
+import re
 
 client = MongoClient('mongodb://localhost:27017/')
 
@@ -7,43 +10,75 @@ db = client['big_data_project_2024']
 collection = db['processed']
 
 
-#Query parameters
-#===============================================================================================================
+opt = None
 
-lower_str = "2024-06-12T14:57:00"
-lower_time = datetime.fromisoformat(lower_str)
-lower_utc = lower_time.astimezone(timezone.utc)
+err = False
 
-upper_str = "2024-06-12T14:57:30"
-upper_time = datetime.fromisoformat(upper_str)
-upper_utc = upper_time.astimezone(timezone.utc)
+while (opt == None):
+
+    print("\nWhat would you like to do:\n================================================================\n1. Find link with most cars within a time period\n2. Find link with greatest average speed within a time period\n3. Find longest route within a time period\n")
+
+    opt = input(f"{'Your option' if not err else 'Invalid option, try again'}: ")
+
+    #print("\nGreat!")
+
+    if not re.match(r"1|2|3", opt):
+        err=True
+        opt = None
+        print("\033[8A", end='')
+        print("\033[J", end='')
+
+print()
+
+#=======================================================================================================================================
+
+if (opt == "1"):
+
+    print("Make sure to insert UTC time in the format YYYY-MM-DD HH:MM:SS\n")
+
+    #Query parameters
+    #================================================================================
+    lower_str = input("Lower date: ")
+    lower_time = datetime.strptime(lower_str, '%Y-%m-%d %H:%M:%S')
+
+    upper_str = input("Upper time: ")
+    upper_time = datetime.strptime(upper_str, '%Y-%m-%d %H:%M:%S')
+    #================================================================================
 
 
-#===============================================================================================================
-
-query = [
-    {
-        "$match":
+    '''
+    query = [
         {
-            "time": {"$gte": lower_utc, "$lte": upper_utc}
-        }
-    },
-    {
-        "$group":
+            "$match":
+            {
+                "time": {"$gte": lower_time, "$lte": upper_time}
+            }
+        },
         {
-            "_id": "$link",
-            "cars": {"$sum": "$vcount"},
+            "$group":
+            {
+                "_id": "$link",
+                "cars": {"$sum": "$vcount"},
+            }
+        },
+        {
+            "$sort": {"cars": 1}
+        },
+        {
+            "$limit": 1
         }
-    },
-    {
-        "$sort": {"cars": 1}
-    },
-    {
-        "$limit": 1
+    ]
+    '''
+
+    query = {
+        "time": {"$gte": lower_time, "$lte": upper_time}
     }
-]
 
-cursor = collection.aggregate(query)
+    #================================================================================
 
-for doc in cursor:
-    print(doc)
+    cursor = collection.find(query).sort({"vcount": 1}).limit(1)
+
+    for doc in cursor:
+        print(f"Link {doc['link']} with {doc['vcount']} cars at {doc['time']}")
+
+#=======================================================================================================================================
