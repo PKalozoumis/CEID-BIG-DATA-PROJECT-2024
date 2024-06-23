@@ -1,6 +1,6 @@
 db.raw.aggregate([
 	{
-		$match: {name: "28"} //<3
+		$match: {name: "13"} //<3
 	},
 	{
 		$sort: {time: 1}
@@ -108,7 +108,7 @@ db.raw.aggregate([
 						$and:
 						[
 							{$gte: ["$$elem.time", new ISODate('2024-06-21T21:09:09.000Z')]},
-							{$lt: ["$$elem.time", new ISODate('2024-06-21T21:10:24.000Z')]}
+							{$lt: ["$$elem.time", new ISODate('2024-06-21T21:10:29.000Z')]}
 						]
 					}
 				}
