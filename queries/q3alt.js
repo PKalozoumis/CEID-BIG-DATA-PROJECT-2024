@@ -1,4 +1,9 @@
 db.raw.aggregate([
+
+    //Group by the vehicle
+    //Goal is find the distance each vehicle has driven within the time window, along with the actual path it traversed
+    //At the end, return the vehicle(s) and the paths with the greatest distance
+    //==========================================================================================================
 	{
 		$group:
 		{
@@ -9,6 +14,19 @@ db.raw.aggregate([
 	{
 		$sort: {time: 1}
 	},
+
+    //We have a SORTED array of all the entries, for each car
+    //Change array elements, so that they only contain:
+    //
+    //  name: Name of the vehicle
+    //  time: The timestamp
+    //  link: The current link
+    //  position: Position within the current link
+    //  next: Information about the next document in the array (5 seconds from now)
+    //      link: The next link
+    //      position: Position within the next link
+    //      dista_until_next_timestamp: The distance I'll drive between now and the next moment. THIS IS WHAT GETS SUMMED UP
+    //==========================================================================================================
 	{
 		$project:
 		{
@@ -20,14 +38,20 @@ db.raw.aggregate([
 					as: "i",
 					in:
 					{
+                        //Current entry information
                         name: {$arrayElemAt: ["$docs.name", "$$i"]},
 						time: {$arrayElemAt: ["$docs.time", "$$i"]},
 						link: {$arrayElemAt: ["$docs.link", "$$i"]},
 						position: {$arrayElemAt: ["$docs.position", "$$i"]},
+
+                        //Next entry information
 						next:
 						{
 							$cond:
 							{
+                                //The last document
+                                //The next entry will be about the same link (since I'm on my destination link)(Am I????)
+                                //The position will be the end of the link (500)
 								if: {$eq: ["$$i", {$subtract: [{$size: "$docs"}, 1]}]},
 								then:
 								{
@@ -39,7 +63,7 @@ db.raw.aggregate([
 								{
 									$cond:
 									{
-										if:
+										if: //I stay within the same link between timestamps
 										{
 											$eq:
 											[
@@ -47,7 +71,7 @@ db.raw.aggregate([
 												{$arrayElemAt: ["$docs.link", {$add: ["$$i", 1]} ] }
 											]
 										},
-										then:
+										then: //Just subtract the two positions
 										{
 											position: {$arrayElemAt: ["$docs.position", {$add: ["$$i", 1]} ] },
 											link: {$arrayElemAt: ["$docs.link", {$add: ["$$i", 1]} ] },
@@ -60,7 +84,7 @@ db.raw.aggregate([
 												]
 											}
 										},
-										else:
+										else: //Add distance from current position to the end of the current link, plus the remaining distance
 										{
 											position: {$arrayElemAt: ["$docs.position", {$add: ["$$i", 1]} ] },
 											link: {$arrayElemAt: ["$docs.link", {$add: ["$$i", 1]} ] },
@@ -82,6 +106,13 @@ db.raw.aggregate([
 			}
 		}
 	},
+
+    //Limit time
+    //Why am I using "<" instead of "<="?
+    //Because from each array element, we will use the "distance until THE NEXT timestamp" for the sum
+    //During this next timestamp, we will be in our final position in the specified time window
+    //So we don't want the entry for that specific timestamp. We don't care about its next
+    //==========================================================================================================
 	{
 		$project:
 		{
@@ -109,6 +140,9 @@ db.raw.aggregate([
 	{
 		$replaceRoot: {newRoot: "$filteredArray"}
 	},
+
+    //Calculate final dista for each vehicle
+    //==========================================================================================================
     {
 		$group:
 		{
@@ -119,6 +153,9 @@ db.raw.aggregate([
 	},
 
     //EVERYTHING AFTER THIS POINT IS ABOUT FORMATTING THE PATH
+
+    //For each vehicle, find its last link within the time window
+    //For each array element, mention its position using the constants "first", "last", "middle", "firstlast" (first & last)
 	//==========================================================================================================
     {
 		$project:
@@ -137,21 +174,21 @@ db.raw.aggregate([
 						{
 							$cond:
 							{
-								if: {$eq: ["$$i", 0]},
+								if: {$eq: ["$$i", 0]}, //Element is first
 								then:
 								{
 									$cond:
 									{
-										if: {$eq: ["$$i", {$subtract: [{$size: "$docs"}, 1]}]},
+										if: {$eq: ["$$i", {$subtract: [{$size: "$docs"}, 1]}]}, //Element is both first and last
 										then: {index: "firstlast"},
 										else: {index: "first"}
 									}
 								},
-								else:
+								else: //Element is not first
 								{
 									$cond:
 									{
-										if: {$eq: ["$$i", {$subtract: [{$size: "$docs"}, 1]}]},
+										if: {$eq: ["$$i", {$subtract: [{$size: "$docs"}, 1]}]}, //Element is last
 										then: {index: "last"},
 										else:{index: "middle"}
 									}
@@ -217,7 +254,19 @@ db.raw.aggregate([
 							if: {$eq: ["$$elem.index", "first"]},
 							then:
 							{
-								$concat: ["$$elem.link", "(", {$toString: "$$elem.position"}, ")"]
+								$cond:
+								{
+									if: {$eq: ["$$elem.link", "$$elem.next.link"]},
+									then:
+									{
+										$concat: ["$$elem.link", "(", {$toString: "$$elem.position"}, ")"]
+									},
+									else:
+									{
+										$concat: ["$$elem.link", "(", {$toString: "$$elem.position"}, ")", " - ", "$$elem.next.link"]
+									}
+								}
+								
 							},
 							else:
 							{
@@ -311,5 +360,8 @@ db.raw.aggregate([
         {
             _id: -1
         }
+    },
+    {
+        $limit: 1
     }
 ])

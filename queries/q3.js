@@ -1,6 +1,6 @@
 db.raw.aggregate([
 	{
-		$match: {name: "13"} //<3
+		$match: {name: "28"}
 	},
 	{
 		$sort: {time: 1}
@@ -230,7 +230,19 @@ db.raw.aggregate([
 							if: {$eq: ["$$elem.index", "first"]},
 							then:
 							{
-								$concat: ["$$elem.link", "(", {$toString: "$$elem.position"}, ")"]
+								$cond:
+								{
+									if: {$eq: ["$$elem.link", "$$elem.next.link"]},
+									then:
+									{
+										$concat: ["$$elem.link", "(", {$toString: "$$elem.position"}, ")"]
+									},
+									else:
+									{
+										$concat: ["$$elem.link", "(", {$toString: "$$elem.position"}, ")", " - ", "$$elem.next.link"]
+									}
+								}
+								
 							},
 							else:
 							{
