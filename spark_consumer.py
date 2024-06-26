@@ -1,5 +1,5 @@
 from pyspark.sql import DataFrame, SparkSession
-from pyspark.sql.functions import col, from_json, count, avg, to_json, struct, expr
+from pyspark.sql.functions import col, from_json, count, avg
 from pyspark.sql.types import StructType, StructField, StringType, FloatType, TimestampType
 from pyspark.sql.functions import window
 
@@ -7,18 +7,22 @@ import sys
 
 #==============================================================================================
 
-#
+
 def mdb_write(batch, batch_id):
     batch.write\
         .format("mongodb")\
-        .mode("append").option("database", "big_data_project_2024")\
+        .mode("append")\
+        .option("spark.mongodb.connection.uri", "mongodb://localhost:27017/")\
+        .option("database", "big_data_project_2024")\
         .option("collection", "raw")\
         .save()
     
 def mdb_processed_write(batch, batch_id):
     batch.write\
         .format("mongodb")\
-        .mode("append").option("database", "big_data_project_2024")\
+        .mode("append")\
+        .option("spark.mongodb.connection.uri", "mongodb://localhost:27017/")\
+        .option("database", "big_data_project_2024")\
         .option("collection", "processed")\
         .save()
     
