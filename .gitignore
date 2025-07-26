@@ -1,2 +1,6 @@
 proj
 EXAMPLE DO NOT COMMIT.py
+.vscode
+out
+__pycache__
+*Zone.Identifier
